@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:wallet_app_workshop/core/data.dart';
@@ -29,7 +30,7 @@ class CreditCardsPage extends StatefulWidget {
 }
 
 class _CreditCardsPageState extends State<CreditCardsPage> {
-  int activeCard = 0;
+  int activeCard = cards.length - 1;
 
   @override
   Widget build(BuildContext context) {
@@ -37,96 +38,108 @@ class _CreditCardsPageState extends State<CreditCardsPage> {
     final cardHeight = screenSize.width * 0.75;
     final cardWidth = cardHeight * creditCardAspectRatio;
 
-    return Center(
-      child: SizedBox(
-        width: cardHeight,
-        height: cardWidth + (cardsOffset * (cards.length - 1)),
-        child: CreditCardsStack(
-          itemCount: cards.length,
-          initialActiveCard: activeCard,
-          onCardTap: (index) {
-            pushFadeInRoute(
-              context,
-              pageBuilder: (context, animation, __) => CreditCardPage(
-                initialIndex: index,
-                pageTransitionAnimation: animation,
-              ),
-            ).then((value) {
-              if (value != null && value is int) {
-                setState(() {
-                  activeCard = value;
-                });
-              }
-            });
-          },
-          itemBuilder: (context, index) {
-            return Align(
-              widthFactor: cardHeight / cardWidth,
-              heightFactor: cardWidth / cardHeight,
-              child: Hero(
-                tag: 'card_${cards[index].id}',
-                flightShuttleBuilder: (
-                  BuildContext context,
-                  Animation<double> animation,
-                  _,
-                  __,
-                  ___,
-                ) {
-                  final rotationAnimation =
-                      Tween<double>(begin: -pi / 2, end: pi).animate(
-                    CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOut,
+    return Scaffold(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.file(
+              File('/storage/emulated/0/Pictures/FoggyMountains.png'),
+              fit: BoxFit.cover,
+            ),
+          ),
+          Center(
+            child: SizedBox(
+              width: cardHeight,
+              height: cardWidth + (cardsOffset * (cards.length - 1)),
+              child: CreditCardsStack(
+                itemCount: cards.length,
+                initialActiveCard: activeCard,
+                onCardTap: (index) {
+                  pushFadeInRoute(
+                    context,
+                    pageBuilder: (context, animation, __) => CreditCardPage(
+                      initialIndex: index,
+                      pageTransitionAnimation: animation,
                     ),
-                  );
+                  ).then((value) {
+                    if (value != null && value is int) {
+                      setState(() {
+                        activeCard = value;
+                      });
+                    }
+                  });
+                },
+                itemBuilder: (context, index) {
+                  return Align(
+                    widthFactor: cardHeight / cardWidth,
+                    heightFactor: cardWidth / cardHeight,
+                    child: Hero(
+                      tag: 'card_${cards[index].id}',
+                      flightShuttleBuilder: (
+                        BuildContext context,
+                        Animation<double> animation,
+                        _,
+                        __,
+                        ___,
+                      ) {
+                        final rotationAnimation =
+                            Tween<double>(begin: -pi / 2, end: pi).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOut,
+                          ),
+                        );
 
-                  final flipAnimation =
-                      Tween<double>(begin: 0, end: pi).animate(
-                    CurvedAnimation(
-                      parent: animation,
-                      curve: const Interval(
-                        0.3,
-                        1,
-                        curve: Curves.easeOut,
-                      ),
-                    ),
-                  );
-
-                  return Material(
-                    color: Colors.transparent,
-                    child: AnimatedBuilder(
-                      animation: animation,
-                      builder: (context, child) {
-                        return Transform(
-                          transform: Matrix4.identity()
-                            ..setEntry(3, 2, 0.001)
-                            ..rotateZ(rotationAnimation.value)
-                            ..rotateX(flipAnimation.value),
-                          alignment: Alignment.center,
-                          child: Transform.flip(
-                            flipX: animation.value > 0.5,
-                            child: CreditCard(
-                              width: cardWidth,
-                              data: cards[index],
-                              isFront: animation.value > 0.5,
+                        final flipAnimation =
+                            Tween<double>(begin: 0, end: pi).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: const Interval(
+                              0.3,
+                              1,
+                              curve: Curves.easeOut,
                             ),
                           ),
                         );
+
+                        return Material(
+                          color: Colors.transparent,
+                          child: AnimatedBuilder(
+                            animation: animation,
+                            builder: (context, child) {
+                              return Transform(
+                                transform: Matrix4.identity()
+                                  ..setEntry(3, 2, 0.001)
+                                  ..rotateZ(rotationAnimation.value)
+                                  ..rotateX(flipAnimation.value),
+                                alignment: Alignment.center,
+                                child: Transform.flip(
+                                  flipX: animation.value > 0.5,
+                                  child: CreditCard(
+                                    width: cardWidth,
+                                    data: cards[index],
+                                    isFront: animation.value > 0.5,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        );
                       },
+                      child: Transform.rotate(
+                        angle: -pi / 2,
+                        child: CreditCard(
+                          width: cardWidth,
+                          data: cards[index],
+                        ),
+                      ),
                     ),
                   );
                 },
-                child: Transform.rotate(
-                  angle: -pi / 2,
-                  child: CreditCard(
-                    width: cardWidth,
-                    data: cards[index],
-                  ),
-                ),
               ),
-            );
-          },
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -257,16 +270,27 @@ class _CreditCardsStackState extends State<CreditCardsStack>
 
               final child = widget.itemBuilder(context, modIndex);
 
-              if (stackIndexWithPlaceholder == 0) {
+              // Build the placeholder card
+              if (index == -1) {
+                final bottomOffsetByIndex =
+                    -cardsOffset * (widget.itemCount - 1);
+
                 return Positioned(
-                  top: 0,
                   left: 0,
-                  child: Transform.scale(
-                    scale: minCardScale,
-                    alignment: Alignment.topCenter,
-                    child: HeroMode(
-                      enabled: false,
-                      child: child,
+                  bottom: 0,
+                  child: Transform.translate(
+                    offset: Offset(
+                      0,
+                      bottomOffsetByIndex +
+                          cardsOffset * curvedAnimation.value,
+                    ),
+                    child: Transform.scale(
+                      scale: minCardScale,
+                      alignment: Alignment.topCenter,
+                      child: HeroMode(
+                        enabled: false,
+                        child: child,
+                      ),
                     ),
                   ),
                 );
@@ -297,13 +321,11 @@ class _CreditCardsStackState extends State<CreditCardsStack>
                 );
               }
 
-              // Build the cards in between (remaining cards)
-              /// To gradually scale down widgets, limited by min and max scales
+              // Build the cards in between
               final scaleByIndex = minCardScale +
                   ((maxCardScale - minCardScale) / (widget.itemCount - 1)) *
                       index;
 
-              // Slide cards up gradually
               final bottomOffsetByIndex =
                   -cardsOffset * (widget.itemCount - 1 - index);
 

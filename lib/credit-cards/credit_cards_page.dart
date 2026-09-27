@@ -379,3 +379,4 @@ Future<dynamic> pushFadeInRoute(
     ),
   );
 }
+
